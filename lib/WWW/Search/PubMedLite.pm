@@ -4,7 +4,7 @@ use base 'WWW::Search';
 use warnings;
 use strict;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use WWW::Search::PubMedLite::Lang;
 use HTML::Entities;
@@ -20,8 +20,29 @@ WWW::Search::PubMedLite - Access PubMed's database of journal articles
   use WWW::Search;
   my $search = new WWW::Search('PubMed');
 
-  my @ids = qw/ 126941 3253 77231 /;
-  $search->native_query( \@ids );
+  $search->native_query( 126941 );
+  my $article = $search->next_result;
+
+  my @fields = qw(
+    pmid
+    journal
+    journal_abbreviation
+    volulme
+    issue
+    title
+    page
+    year
+    month
+    affiliation
+    abstract
+    language
+    doi
+    text_url
+  );
+
+  foreach my $field ( @fields ) {
+    printf "%s: %s\n", $field, $article->{$field};
+  }
 
 =head1 METHODS
 
@@ -81,7 +102,7 @@ sub native_retrieve_some {
 
   $data{language_name} = WWW::Search::PubMedLite::Lang->abbr2name( $data{language} );
 
-  $data{page} =~ s/-/decode_entities('&ndash;')/ge;
+  #$data{page} =~ s/-/decode_entities('&ndash;')/ge;
 
   my $hit = new WWW::SearchResult();
   $hit->{$_} = $data{$_} for keys %data;

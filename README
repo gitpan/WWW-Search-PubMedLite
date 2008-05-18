@@ -1,40 +1,64 @@
-WWW-Search-PubMedLite
+WWW::Search::PubMedLite
+=======================
 
-OK
+This module queries the NCBI PubMed database in much the same way as
+the WWW::Search::PubMed module. The difference is that this module,
+PubMedLite, parses XML and returns data in a slightly different format
+than the original PubMed module.
+
+Notably, this module was developed for WWW::Wikipedia::TemplateFiller,
+and as a result it is incomplete.
 
 INSTALLATION
 
-To install this module, run the following commands:
+  % perl -MCPAN -e 'install WWW::Search::PubMedLite'
 
-    perl Makefile.PL
-    make
-    make test
-    make install
+SYNOPSIS
 
+Converting HTML to wiki markup is easy:
 
-SUPPORT AND DOCUMENTATION
+  use WWW::Search;
+  my $search = new WWW::Search('PubMed');
 
-After installing, you can find documentation for this module with the perldoc command.
+  $search->native_query( 126941 );
+  my $article = $search->next_result;
 
-    perldoc WWW::Search::PubMedLite
+  my @fields = qw(
+    pmid
+    journal
+    journal_abbreviation
+    volulme
+    issue
+    title
+    page
+    year
+    month
+    affiliation
+    abstract
+    language
+    doi
+    text_url
+  );
 
-You can also look for information at:
+  foreach my $field ( @fields ) {
+    printf "%s: %s\n", $field, $article->{$field};
+  }
 
-    Search CPAN
-        http://search.cpan.org/dist/WWW-Search-PubMedLite
+There's also a web interface if you're so inclined:
 
-    CPAN Request Tracker:
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=WWW-Search-PubMedLite
+  http://diberri.dyndns.org/cgi-bin/templatefiller/
 
-    AnnoCPAN, annotated CPAN documentation:
-        http://annocpan.org/dist/WWW-Search-PubMedLite
+PREREQUISITES
 
-    CPAN Ratings:
-        http://cpanratings.perl.org/d/WWW-Search-PubMedLite
+  * WWW::Search
+  * HTML::Entities
+  * XML::LibXML
 
-COPYRIGHT AND LICENCE
+COPYRIGHT
 
-Copyright (C) 2007 David J. Iberri
+Copyright (c) David J. Iberri <diberri@cpan.org>
 
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+See http://www.perl.com/perl/misc/Artistic.html

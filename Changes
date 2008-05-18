@@ -1,5 +1,10 @@
 Revision history for WWW-Search-PubMedLite
 
-0.01    ???/???
-        Initial release
+version: 0.02
+date:    Sat 18 May 2008
+changes:
+  - updated dependencies to include WWW::Search
 
+version: 0.01
+date:    Thu 16 May 2008
+  - initial release
