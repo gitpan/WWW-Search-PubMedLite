@@ -38,6 +38,7 @@ Converting HTML to wiki markup is easy:
     language
     doi
     text_url
+    pmc_id
   );
 
   foreach my $field ( @fields ) {

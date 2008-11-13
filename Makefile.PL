@@ -5,6 +5,7 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     NAME                => 'WWW::Search::PubMedLite',
     AUTHOR              => 'David J. Iberri <diberri@cpan.org>',
+    LICENSE             => 'perl',
     VERSION_FROM        => 'lib/WWW/Search/PubMedLite.pm',
     ABSTRACT_FROM       => 'lib/WWW/Search/PubMedLite.pm',
     PL_FILES            => {},

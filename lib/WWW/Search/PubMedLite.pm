@@ -4,7 +4,7 @@ use base 'WWW::Search';
 use warnings;
 use strict;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use WWW::Search::PubMedLite::Lang;
 use HTML::Entities;
@@ -38,6 +38,7 @@ WWW::Search::PubMedLite - Access PubMed's database of journal articles
     language
     doi
     text_url
+    pmc_id
   );
 
   foreach my $field ( @fields ) {
@@ -53,6 +54,8 @@ sub native_setup_search {
   my @ids = ref $query eq 'ARRAY' ? @$query : ( $query );
   $self->{_ids} = \@ids;
   $self->{_idx} = 0;
+
+  $self->agent_name('WWW-Search-PubMedLite');
   $self->user_agent(1);
 }
 
@@ -62,7 +65,7 @@ sub _doc {
   my( $self, $xml_url ) = @_;
   return $Doc{$xml_url} if exists $Doc{$xml_url};
 
-  my $xml = $self->_fetch_data($xml_url) or die "can't fetch xml";
+  my $xml = $self->_fetch_data($xml_url); # dies on error
   my $parser = new XML::LibXML();
   $Doc{$xml_url} = $parser->parse_string($xml);
 
@@ -147,6 +150,12 @@ sub _tu_xml_url {
   return $text_url;
 }
 
+sub _pmc_xml_url {
+  my( $self, $pmid ) = @_;
+  my $pmc_url = sprintf 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&id=%s&db=pmc', $pmid;
+  return $pmc_url;
+}
+
 sub _fields { (
   { key => 'pmid',                 xml_url => \&_url, xpath => '//PMID' },
   { key => 'journal',              xml_url => \&_url, xpath => '//Journal/Title' },
@@ -161,14 +170,14 @@ sub _fields { (
   { key => 'abstract',             xml_url => \&_url, xpath => '//Abstract/AbstractText' },
   { key => 'language',             xml_url => \&_url, xpath => '//Article/Language' },
   { key => 'doi',                  xml_url => \&_url, xpath => '//PubmedData/ArticleIdList/ArticleId[@IdType="doi"]' },
-  { key => 'text_url',             xml_url => \&_tu_xml_url, xpath => '//IdUrlSet/ObjUrl/Url' },
+  { key => 'text_url',             xml_url => \&_tu_xml_url,  xpath => '//IdUrlSet/ObjUrl/Url' },
+  { key => 'pmc_id',               xml_url => \&_pmc_xml_url, xpath => '/eLinkResult/LinkSet/LinkSetDb[LinkName="pubmed_pmc"]/Link/Id' },
 
   # author
 ) }
 
 sub _field_value {
   my( $self, $doc, $xpath ) = @_;
-  #die $doc->findnodes($xpath);
 
   my $node = ($doc->findnodes($xpath))[0];
   return undef unless $node;
@@ -185,8 +194,12 @@ sub _url {
 sub _fetch_data {
   my( $self, $url ) = @_;
   $self->user_agent->timeout(10);
+
   my $res = $self->user_agent->get($url);
-  return unless $res->is_success;
+  if( ! $res->is_success ) {
+    die sprintf "could not fetch %s: error %s (agent: %s)", $url, $res->status_line, $self->user_agent->agent;
+  }
+
   return $res->content;
 }
 
