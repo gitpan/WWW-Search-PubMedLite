@@ -18,7 +18,7 @@ SYNOPSIS
 Converting HTML to wiki markup is easy:
 
   use WWW::Search;
-  my $search = new WWW::Search('PubMed');
+  my $search = new WWW::Search('PubMedLite');
 
   $search->native_query( 126941 );
   my $article = $search->next_result;

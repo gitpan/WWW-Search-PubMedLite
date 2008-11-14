@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               WWW-Search-PubMedLite
-version:            0.03
+version:            0.04
 abstract:           Access PubMed's database of journal articles
 author:
     - David J. Iberri <diberri@cpan.org>

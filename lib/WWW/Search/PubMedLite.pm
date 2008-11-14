@@ -4,7 +4,7 @@ use base 'WWW::Search';
 use warnings;
 use strict;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use WWW::Search::PubMedLite::Lang;
 use HTML::Entities;
@@ -18,7 +18,7 @@ WWW::Search::PubMedLite - Access PubMed's database of journal articles
 =head1 SYNOPSIS
 
   use WWW::Search;
-  my $search = new WWW::Search('PubMed');
+  my $search = new WWW::Search('PubMedLite');
 
   $search->native_query( 126941 );
   my $article = $search->next_result;
@@ -242,8 +242,6 @@ L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=WWW-Search-PubMedLite>
 L<http://search.cpan.org/dist/WWW-Search-PubMedLite>
 
 =back
-
-=head1 ACKNOWLEDGEMENTS
 
 =head1 COPYRIGHT & LICENSE
 
