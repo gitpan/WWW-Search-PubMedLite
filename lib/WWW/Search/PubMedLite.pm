@@ -4,7 +4,8 @@ use base 'WWW::Search';
 use warnings;
 use strict;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
+our $DEBUG = 0;
 
 use WWW::Search::PubMedLite::Lang;
 use HTML::Entities;
@@ -45,8 +46,6 @@ WWW::Search::PubMedLite - Access PubMed's database of journal articles
     printf "%s: %s\n", $field, $article->{$field};
   }
 
-=head1 METHODS
-
 =cut
 
 sub native_setup_search {
@@ -57,30 +56,21 @@ sub native_setup_search {
 
   $self->agent_name('WWW-Search-PubMedLite');
   $self->user_agent(1);
-}
-
-my %Doc;
-
-sub _doc {
-  my( $self, $xml_url ) = @_;
-  return $Doc{$xml_url} if exists $Doc{$xml_url};
-
-  my $xml = $self->_fetch_data($xml_url); # dies on error
-  my $parser = new XML::LibXML();
-  $Doc{$xml_url} = $parser->parse_string($xml);
-
-  return $Doc{$xml_url};
+  $self->_debug("");
 }
 
 sub native_retrieve_some {
   my $self = shift;
+  $self->_debug( "native_retrieve_some(): starting..." );
+
   my $id = $self->{_ids}->[$self->{_idx}++] or return;
 
-  $self->{_current_url} = $self->_url($id);
+  $self->{_current_url} = $self->_main_url($id);
 
   my %data = ( );
   my @fields = $self->_fields;
 
+  $self->_debug( "native_retrieve_some():  extracting fields" );
   foreach my $field ( @fields ) {
     my $xml_url = $field->{xml_url}->( $self, $id );
     my @keys = ref $field->{key} ? @{$field->{key}} : ($field->{key});
@@ -90,13 +80,13 @@ sub native_retrieve_some {
 
     my $value = undef;
     foreach my $xpath ( @xpath ) {
-      #warn "URL: $xml_url, XPath: $xpath";
       $value = $self->_field_value( $doc, $xpath );
       last if $value;
     }
 
     $data{$_} = $value foreach @keys;
   }
+  $self->_debug( "native_retrieve_some():  done extracting fields" );
   
   $data{year} =~ s/^(\d{4}).*/$1/ if $data{year};
 
@@ -114,6 +104,9 @@ sub native_retrieve_some {
   push @{$self->{cache}}, $hit;
 
   $self->{_current_url} = undef;
+
+  $self->_debug( "native_retrieve_some(): done." );
+
   return 1;
 }
 
@@ -144,32 +137,37 @@ sub _authors {
   return \@author_text;
 }
 
-sub _tu_xml_url {
-  my( $self, $pmid ) = @_;
-  my $text_url = sprintf 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&id=%s&cmd=prlinks', $pmid;
-  return $text_url;
+sub _main_url {
+  my( $self, $id ) = @_;
+  return sprintf 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=%s&retmode=xml', $id;
 }
 
+# text_url
+sub _tu_xml_url {
+  my( $self, $pmid ) = @_;
+  return sprintf 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&id=%s&cmd=prlinks', $pmid;
+}
+
+# pmc_id
 sub _pmc_xml_url {
   my( $self, $pmid ) = @_;
-  my $pmc_url = sprintf 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&id=%s&db=pmc', $pmid;
-  return $pmc_url;
+  return sprintf 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&id=%s&db=pmc', $pmid;
 }
 
 sub _fields { (
-  { key => 'pmid',                 xml_url => \&_url, xpath => '//PMID' },
-  { key => 'journal',              xml_url => \&_url, xpath => '//Journal/Title' },
-  { key => 'journal_abbreviation', xml_url => \&_url, xpath => [ '//Journal/ISOAbbreviation', '//MedlineJournalInfo/MedlineTA', '//Journal/Title' ] },
-  { key => 'volume',               xml_url => \&_url, xpath => '//JournalIssue/Volume' },
-  { key => 'issue',                xml_url => \&_url, xpath => '//JournalIssue/Issue' },
-  { key => 'title',                xml_url => \&_url, xpath => '//Article/ArticleTitle' },
-  { key => 'page',                 xml_url => \&_url, xpath => '//Pagination/MedlinePgn' },
-  { key => 'year',                 xml_url => \&_url, xpath => [ '//JournalIssue/PubDate/Year', '//PubDate/MedlineDate' ] },
-  { key => 'month',                xml_url => \&_url, xpath => '//JournalIssue/PubDate/Month' },
-  { key => 'affiliation',          xml_url => \&_url, xpath => '//Affiliation' },
-  { key => 'abstract',             xml_url => \&_url, xpath => '//Abstract/AbstractText' },
-  { key => 'language',             xml_url => \&_url, xpath => '//Article/Language' },
-  { key => 'doi',                  xml_url => \&_url, xpath => '//PubmedData/ArticleIdList/ArticleId[@IdType="doi"]' },
+  { key => 'pmid',                 xml_url => \&_main_url,    xpath => '//PMID' },
+  { key => 'journal',              xml_url => \&_main_url,    xpath => '//Journal/Title' },
+  { key => 'journal_abbreviation', xml_url => \&_main_url,    xpath => [ '//Journal/ISOAbbreviation', '//MedlineJournalInfo/MedlineTA', '//Journal/Title' ] },
+  { key => 'volume',               xml_url => \&_main_url,    xpath => '//JournalIssue/Volume' },
+  { key => 'issue',                xml_url => \&_main_url,    xpath => '//JournalIssue/Issue' },
+  { key => 'title',                xml_url => \&_main_url,    xpath => '//Article/ArticleTitle' },
+  { key => 'page',                 xml_url => \&_main_url,    xpath => '//Pagination/MedlinePgn' },
+  { key => 'year',                 xml_url => \&_main_url,    xpath => [ '//JournalIssue/PubDate/Year', '//PubDate/MedlineDate' ] },
+  { key => 'month',                xml_url => \&_main_url,    xpath => '//JournalIssue/PubDate/Month' },
+  { key => 'affiliation',          xml_url => \&_main_url,    xpath => '//Affiliation' },
+  { key => 'abstract',             xml_url => \&_main_url,    xpath => '//Abstract/AbstractText' },
+  { key => 'language',             xml_url => \&_main_url,    xpath => '//Article/Language' },
+  { key => 'doi',                  xml_url => \&_main_url,    xpath => '//PubmedData/ArticleIdList/ArticleId[@IdType="doi"]' },
   { key => 'text_url',             xml_url => \&_tu_xml_url,  xpath => '//IdUrlSet/ObjUrl/Url' },
   { key => 'pmc_id',               xml_url => \&_pmc_xml_url, xpath => '/eLinkResult/LinkSet/LinkSetDb[LinkName="pubmed_pmc"]/Link/Id' },
 
@@ -178,29 +176,61 @@ sub _fields { (
 
 sub _field_value {
   my( $self, $doc, $xpath ) = @_;
+  $self->_debug( "_field_value(): searthing for $xpath" );
+  $self->_debug( "_field_value(): \$doc is undef" ), return undef unless $doc;
 
   my $node = ($doc->findnodes($xpath))[0];
-  return undef unless $node;
+  $self->_debug( "_field_value(): no node, returning undef" ), return undef unless $node;
 
   my $value = $node->to_literal;
+  $self->_debug( "_field_value(): got $value" );
   return $value;
 }
 
-sub _url {
-  my( $self, $id ) = @_;
-  return sprintf 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=%s&retmode=xml', $id;
-}
+#
+# Returns the content from $url, warning on error.
+#
 
 sub _fetch_data {
   my( $self, $url ) = @_;
   $self->user_agent->timeout(10);
 
+  $self->_debug( "_fetch_data(): fetching $url" );
+
   my $res = $self->user_agent->get($url);
   if( ! $res->is_success ) {
-    die sprintf "could not fetch %s: error %s (agent: %s)", $url, $res->status_line, $self->user_agent->agent;
+    $self->_debug( sprintf "_fetch_data(): could not fetch %s: error %s (agent: %s)", $url, $res->status_line, $self->user_agent->agent );
+    return undef;
   }
 
   return $res->content;
+}
+
+#
+# Given an $xml_url, returns a parsed XML document. Uses caching.
+# 
+
+my %Doc;
+sub _doc {
+  my( $self, $xml_url ) = @_;
+  if( exists $Doc{$xml_url} ) {
+    $self->_debug( "_doc(): cache for $xml_url" );
+    return $Doc{$xml_url};
+  }
+  $self->_debug(   "_doc(): no cache for $xml_url" );
+
+  my $xml = $self->_fetch_data($xml_url);
+  $self->_debug( "_doc(): empty page" ), return undef unless $xml;
+
+  my $parser = new XML::LibXML();
+  $Doc{$xml_url} = $parser->parse_string($xml);
+
+  return $Doc{$xml_url};
+}
+
+sub _debug {
+  my( $self, @msg ) = @_;
+  warn @msg, "\n" if $DEBUG;
 }
 
 =head1 AUTHOR
@@ -209,11 +239,33 @@ David J. Iberri, C<< <diberri at cpan.org> >>
 
 =head1 BUGS
 
+=head2 NCBI error 803/temporarily unavailable
+
+As of November 2008, the NCBI/PubMed servers have been a bit
+unpredictable in returning results to queries issued by
+W::S::PubMedLite. The only queries that appear to be failing are those
+that request the PubMed Central ID; for example:
+
+  L<http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&id=16402093&db=pmc>
+
+The error returned by NCBI is "error 803/temporarily unavailable",
+which prevents WWW::Search::PubMedLite from filling the C<pmc_id>
+field in results.
+
+This impacts C<make test>; specifically, if this error is encountered,
+the "pmc_id" test will be skipped and a brief explanation will be
+given. It should be safe to continue with the installation provided
+that the other tests are working. Again, it appears that this problem
+is confined to the C<pmc_id> field.
+
+=head2 Bug reports
+
 Please report any bugs or feature requests to
-C<bug-www-search-pubmedlite at rt.cpan.org>, or through the web interface at
+C<bug-www-search-pubmedlite at rt.cpan.org>, or through the web
+interface at
 L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=WWW-Search-PubMedLite>.
-I will be notified, and then you'll automatically be notified of progress on
-your bug as I make changes.
+I will be notified, and then you'll automatically be notified of
+progress on your bug as I make changes.
 
 =head1 SUPPORT
 

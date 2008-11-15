@@ -3,11 +3,10 @@ WWW::Search::PubMedLite
 
 This module queries the NCBI PubMed database in much the same way as
 the WWW::Search::PubMed module. The difference is that this module,
-PubMedLite, parses XML and returns data in a slightly different format
-than the original PubMed module.
+W::S::PubMedLite, returns more data and in a slightly different format
+than the original W::S::PubMed module.
 
-Notably, this module was developed for WWW::Wikipedia::TemplateFiller,
-and as a result it is incomplete.
+Notably, this module was developed for WWW::Wikipedia::TemplateFiller.
 
 INSTALLATION
 
